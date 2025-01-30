@@ -1,0 +1,16 @@
+# Python venv and artifacts
+venv
+.venv
+__pycache__
+*.pyc
+
+# Private credentials
+credentials.json
+session/
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Encryption store
+secret_store
