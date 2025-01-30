@@ -155,14 +155,14 @@ async def serve_catgirl(
             post = obj[0]
 
         # Fetch the image
-        img_url: str = post["sample_url"]
+        img_url = str(post["sample_url"])
         img_mime = mimetypes.guess_type(img_url)[0]
         if img_mime is None:
             log(f"Could not guess mime type of image url: {img_url}. No catgirl...")
             return
-        img_size: int = post["sample_file_size"]
-        img_w: int = post["sample_width"]
-        img_h: int = post["sample_height"]
+        img_size = int(post["sample_file_size"])
+        img_w = int(post["sample_width"])
+        img_h = int(post["sample_height"])
 
         log(f"GET {img_url}")
         async with session.get(img_url) as resp:
