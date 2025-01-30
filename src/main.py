@@ -7,6 +7,7 @@ import traceback
 import aiohttp
 from datetime import datetime
 import nio
+from urllib.parse import unquote
 from auth import resolve_credentials
 import simplematrixbotlib as botlib
 
@@ -164,6 +165,9 @@ async def serve_catgirl(
         img_w = int(post["sample_width"])
         img_h = int(post["sample_height"])
 
+        *_, tail = img_url.split("/")
+        img_filename = unquote(tail)
+
         log(f"GET {img_url}")
         async with session.get(img_url) as resp:
             log("Got response with image from yande.re")
@@ -193,6 +197,7 @@ async def serve_catgirl(
 
             msg_content = {
                 "body": f"catgirl by {post['author']}: https://yande.re/post/show/{post['id']}",
+                "filename": img_filename,
                 "info": {
                     "size": img_size,
                     "mimetype": img_mime,
