@@ -18,12 +18,12 @@ catgirl_id_counter = 0
 
 
 async def log_bad_response(resp: aiohttp.ClientResponse):
-    print(f"Response:")
+    print("Response:")
     print(f"\tStatus: {resp.status} {responses[resp.status]}")
     try:
         message = await resp.text()
         print(f"\tBody: {message}")
-    except:
+    except Exception:
         pass
 
 
