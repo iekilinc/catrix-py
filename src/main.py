@@ -196,7 +196,7 @@ async def serve_catgirl(
             log("Image uploaded")
 
             msg_content = {
-                "body": f"catgirl by {post['author']}: https://yande.re/post/show/{post['id']}",
+                "body": f"{bot_message_prefix} catgirl by {post['author']}: https://yande.re/post/show/{post['id']}",
                 "filename": img_filename,
                 "info": {
                     "size": img_size,
