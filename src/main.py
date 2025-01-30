@@ -178,7 +178,9 @@ async def serve_catgirl(
                 lambda a, b: resp.content,
                 encrypt=True,
                 content_type=img_mime,
-                filesize=img_size,
+                filesize=img_size
+                if resp.content_length is None
+                else resp.content_length,
             )
             if isinstance(upload_resp, nio.UploadError):
                 log(f"Image upload failed: {upload_resp}\nNo catgirl...")
