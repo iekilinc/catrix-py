@@ -45,8 +45,10 @@ async def make_bot() -> botlib.Bot:
     config.join_on_invite = False
     config.encryption_enabled = True
     config.ignore_unverified_devices = True
-    config.emoji_verify = True
     config.store_path = STORE_DIR
+    # Doesn't even work
+    config.emoji_verify = False
+
     # Client
     bot = botlib.Bot(creds.bot_creds, config)
 
