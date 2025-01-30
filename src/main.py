@@ -18,12 +18,16 @@ bot_message_prefix = "[]"
 catgirl_id_counter = 0
 
 
+def print_timestamped(msg=""):
+    print(f"{datetime.now().isoformat()}: {msg}")
+
+
 async def log_bad_response(resp: aiohttp.ClientResponse):
-    print("Response:")
-    print(f"\tStatus: {resp.status} {responses[resp.status]}")
+    print_timestamped("Response:")
+    print_timestamped(f"\tStatus: {resp.status} {responses[resp.status]}")
     try:
         message = await resp.text()
-        print(f"\tBody: {message}")
+        print_timestamped(f"\tBody: {message}")
     except Exception:
         pass
 
@@ -110,7 +114,7 @@ async def amain() -> None:
             task.add_done_callback(running_tasks.discard)
             # await serve_catgirl(bot, room, message.event_id)
         except Exception as e:
-            print("Could not serve catgirl")
+            print_timestamped("Could not serve catgirl")
             traceback.print_exception(e)
 
     bot.run()
@@ -120,7 +124,7 @@ async def serve_catgirl(
     bot: botlib.Bot, room: nio.MatrixRoom, in_reply_to: str, catgirl_id: int
 ):
     def log(message=""):
-        print(f"{datetime.now().isoformat()}: Catgirl {catgirl_id}: {message}")
+        print_timestamped(f"Catgirl {catgirl_id}: {message}")
 
     log("Called serve_catgirl")
     async with aiohttp.ClientSession() as session:
@@ -238,7 +242,7 @@ async def serve_catgirl(
 
 def print_message(message: nio.RoomMessageText, room: nio.MatrixRoom):
     symbol = "🛡" if message.decrypted else "⚠️"
-    print(
+    print_timestamped(
         f"{symbol} ({room.display_name}) <{room.user_name(message.sender)}> {message.body}"
     )
 
@@ -247,23 +251,23 @@ def initialize_session_dir() -> None:
     SESSION_DIR = os.path.abspath("session")
     if not os.path.exists(SESSION_DIR):
         os.mkdir(SESSION_DIR)
-        print(f"Created session directory at {SESSION_DIR}")
+        print_timestamped(f"Created session directory at {SESSION_DIR}")
     else:
         if not os.path.isdir(SESSION_DIR):
             raise Exception(f"session ({SESSION_DIR}) exists but is not a directory")
         else:
-            print(f"Using existing session directory at {SESSION_DIR}")
+            print_timestamped(f"Using existing session directory at {SESSION_DIR}")
 
 
 def initialize_store_dir() -> None:
     if not os.path.exists(STORE_DIR):
         os.mkdir(STORE_DIR)
-        print(f"Created store directory at {STORE_DIR}")
+        print_timestamped(f"Created store directory at {STORE_DIR}")
     else:
         if not os.path.isdir(STORE_DIR):
             raise Exception(f"Store ({STORE_DIR}) exists but is not a directory")
         else:
-            print(f"Using existing store directory at {STORE_DIR}")
+            print_timestamped(f"Using existing store directory at {STORE_DIR}")
 
 
 if __name__ == "__main__":
@@ -271,10 +275,10 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
         loop.run_until_complete(amain())
     except InterruptedError as e:
-        print(f"Shutting down due to interrupt signal: {e}")
+        print_timestamped(f"Shutting down due to interrupt signal: {e}")
     except Exception as e:
-        print("Shutting down due to irrecoverable error")
+        print_timestamped("Shutting down due to irrecoverable error")
         traceback.print_exception(e)
         sys.exit(1)
     finally:
-        print(f"{catgirl_id_counter} catgirls served on this run")
+        print_timestamped(f"{catgirl_id_counter} catgirls served on this run")
