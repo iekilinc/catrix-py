@@ -32,7 +32,7 @@ async def log_bad_response(resp: aiohttp.ClientResponse):
         pass
 
 
-async def amain() -> None:
+async def make_bot() -> botlib.Bot:
     # Creds
     creds = await resolve_credentials()
     if creds is None:
@@ -117,7 +117,7 @@ async def amain() -> None:
             print_timestamped("Could not serve catgirl")
             traceback.print_exception(e)
 
-    bot.run()
+    return bot
 
 
 async def serve_catgirl(
@@ -273,7 +273,8 @@ def initialize_store_dir() -> None:
 if __name__ == "__main__":
     try:
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(amain())
+        bot = loop.run_until_complete(make_bot())
+        bot.run()
     except InterruptedError as e:
         print_timestamped(f"Shutting down due to interrupt signal: {e}")
     except Exception as e:
