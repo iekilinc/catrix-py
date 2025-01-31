@@ -9,6 +9,7 @@ from datetime import datetime
 import nio
 from urllib.parse import unquote
 from auth import resolve_credentials
+from verification import register_emoji_verification
 import simplematrixbotlib as botlib
 
 STORE_DIR = os.path.abspath("session/store")
@@ -118,6 +119,10 @@ async def make_bot() -> botlib.Bot:
         except Exception as e:
             print_timestamped("Could not serve catgirl")
             traceback.print_exception(e)
+
+    @bot.listener.on_startup  # type: ignore
+    async def on_startup(_s):
+        register_emoji_verification(bot, creds)
 
     return bot
 
