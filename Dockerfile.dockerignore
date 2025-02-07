@@ -1,0 +1,26 @@
+# Python venv and artifacts
+venv
+.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Private credentials and session data
+credentials.json
+session
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+**/desktop.ini
+
+# Git
+.git
+.gitignore
+
+# Dev
+.vscode

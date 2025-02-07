@@ -1,0 +1,10 @@
+services:
+  catrix-smbl:
+    container_name: catrix-smbl
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - "./credentials.json:/app/credentials.json:Z"
+      - "./session:/app/session:Z"
+    restart: unless-stopped
