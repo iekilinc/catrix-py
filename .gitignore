@@ -3,8 +3,9 @@ venv
 .venv
 __pycache__
 *.pyc
+*.pyo
 
-# Private credentials
+# Private credentials and session data
 credentials.json
 session/
 .env
@@ -12,5 +13,7 @@ session/
 !.env.example
 !.env.*.example
 
-# Encryption store
-secret_store
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
