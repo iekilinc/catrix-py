@@ -105,8 +105,10 @@ key_verification_request_schema = {
                 "timestamp": {"type": "number"},
                 "transaction_id": {"type": "string"},
             },
+            "required": ["from_device", "methods", "timestamp", "transaction_id"],
         },
     },
+    "required": ["type", "content"],
 }
 
 
@@ -132,8 +134,10 @@ key_verification_done_schema = {
             "properties": {
                 "transaction_id": {"type": "string"},
             },
+            "required": ["transaction_id"],
         },
     },
+    "required": ["type", "content"],
 }
 
 
