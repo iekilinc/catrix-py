@@ -96,13 +96,15 @@ key_verification_request_schema = {
         "type": {"constant": "m.key.verification.request"},
         "content": {
             "type": "object",
-            "from_device": {"type": "string"},
-            "methods": {
-                "type": "array",
-                "items": {"type": "string"},
+            "properties": {
+                "from_device": {"type": "string"},
+                "methods": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "timestamp": {"type": "number"},
+                "transaction_id": {"type": "string"},
             },
-            "timestamp": {"type": "number"},
-            "transaction_id": {"type": "string"},
         },
     },
 }
@@ -126,7 +128,10 @@ key_verification_done_schema = {
     "properties": {
         "type": {"constant": "m.key.verification.done"},
         "content": {
-            "transaction_id": {"type": "string"},
+            "type": "object",
+            "properties": {
+                "transaction_id": {"type": "string"},
+            },
         },
     },
 }
