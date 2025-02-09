@@ -109,11 +109,16 @@ async def resolve_credentials() -> Optional[Credentials]:
                 "device_name": {"type": "string"},
                 "allowed_command_users": {
                     "type": "array",
-                    "items": {
-                        "type": "string",
-                    },
+                    "items": {"type": "string"},
                 },
             },
+            "required": [
+                "homeserver",
+                "username",
+                "password",
+                "device_name",
+                "allowed_command_users",
+            ],
         }
 
         try:
