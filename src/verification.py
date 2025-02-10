@@ -56,7 +56,7 @@ def with_logs[Ev: EventType](event_type: Type[Ev]):
 def with_allowed_sender_only[Ev: EventType](event_type: Type[Ev], creds: Credentials):
     def decorate(callback: EventHandler[Ev]) -> EventHandler[Ev]:
         async def wrapper(event: Ev, log: LogFn) -> None:
-            if event.sender not in creds.allowed_command_users:
+            if event.sender not in creds.options.allowed_command_users:
                 log("User is not in the list of allowed command users. Ignoring event.")
                 return
 

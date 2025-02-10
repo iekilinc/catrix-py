@@ -76,11 +76,16 @@ async def make_bot() -> botlib.Bot:
         "nyaa~",
     )
 
+    tags = ("order:random", "nekomimi")
+    if not creds.options.nsfw:
+        tags += ("-rating:r",)
+    tags_str = "+".join(tags)
+
     @bot.listener.on_message_event  # type: ignore
     async def on_message(room: nio.MatrixRoom, message: nio.RoomMessageText):
         print_message(message, room)
         # Reply only to commands send by allowed command users
-        if message.sender not in creds.allowed_command_users:
+        if message.sender not in creds.options.allowed_command_users:
             return
         # The message was sent by this bot, so ignore it
         if message.body.startswith(bot_message_prefix):
@@ -111,7 +116,7 @@ async def make_bot() -> botlib.Bot:
 
             event_loop = asyncio.get_running_loop()
             task = event_loop.create_task(
-                serve_catgirl(bot, room, message.event_id, catgirl_id)
+                serve_catgirl(bot, room, message.event_id, catgirl_id, tags_str)
             )
             running_tasks.add(task)
             task.add_done_callback(running_tasks.discard)
@@ -128,14 +133,14 @@ async def make_bot() -> botlib.Bot:
 
 
 async def serve_catgirl(
-    bot: botlib.Bot, room: nio.MatrixRoom, in_reply_to: str, catgirl_id: int
+    bot: botlib.Bot, room: nio.MatrixRoom, in_reply_to: str, catgirl_id: int, tags: str
 ):
     def log(message=""):
         print_timestamped(f"Catgirl {catgirl_id}: {message}")
 
     log("Called serve_catgirl")
     async with aiohttp.ClientSession() as session:
-        get_url = "https://yande.re/post.json?limit=1&tags=nekomimi order:random"
+        get_url = f"https://yande.re/post.json?limit=1&tags={tags}"
         log(f"GET {get_url}")
         async with session.get(get_url) as resp:
             log("Got response of post description from yande.re")

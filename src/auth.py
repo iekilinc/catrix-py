@@ -18,11 +18,12 @@ class PersistentCredentials(NamedTuple):
     password: str
     device_name: str
     allowed_command_users: set[str]
+    nsfw: bool
 
 
 class Credentials(NamedTuple):
     bot_creds: botlib.Creds
-    allowed_command_users: set[str]
+    options: PersistentCredentials
 
 
 def to_json(c: PersistentCredentials) -> str:
@@ -33,6 +34,7 @@ def to_json(c: PersistentCredentials) -> str:
             "password": c.password,
             "device_name": c.device_name,
             "allowed_command_users": list(c.allowed_command_users),
+            "nsfw": c.nsfw,
         },
         indent=2,
     )
@@ -40,7 +42,7 @@ def to_json(c: PersistentCredentials) -> str:
 
 def print_creds_safe(c: PersistentCredentials) -> None:
     print(
-        f"\thomeserver={c.homeserver}\n\tusername={c.username}\n\tpassword=[redacted]\n\tdevice_name={c.device_name}\n\tpassword=[redacted]\n\tallowed_command_users={c.allowed_command_users}"
+        f"\thomeserver={c.homeserver}\n\tusername={c.username}\n\tpassword=[redacted]\n\tdevice_name={c.device_name}\n\tpassword=[redacted]\n\tallowed_command_users={c.allowed_command_users}\n\tnswf={c.nsfw}"
     )
 
 
@@ -68,6 +70,15 @@ async def resolve_credentials() -> Optional[Credentials]:
                 break
             else:
                 allowed_command_users.add(allowed_user)
+        while True:
+            nsfw_answer = input("Allow NSFW images? (y/n): ").strip().lower()
+            if nsfw_answer == "y":
+                nsfw = True
+            elif nsfw_answer == "n":
+                nsfw = False
+            else:
+                continue
+            break
 
         creds = PersistentCredentials(
             homeserver=homeserver,
@@ -75,6 +86,7 @@ async def resolve_credentials() -> Optional[Credentials]:
             password=password,
             device_name=device_name,
             allowed_command_users=allowed_command_users,
+            nsfw=nsfw,
         )
         print_creds_safe(creds)
 
@@ -85,7 +97,8 @@ async def resolve_credentials() -> Optional[Credentials]:
 
         bot_creds = creds_to_botlib_creds(creds)
         return Credentials(
-            bot_creds=bot_creds, allowed_command_users=creds.allowed_command_users
+            bot_creds=bot_creds,
+            options=creds,
         )
 
     else:
@@ -111,6 +124,7 @@ async def resolve_credentials() -> Optional[Credentials]:
                     "type": "array",
                     "items": {"type": "string"},
                 },
+                "nsfw": {"type": "boolean"},
             },
             "required": [
                 "homeserver",
@@ -118,6 +132,7 @@ async def resolve_credentials() -> Optional[Credentials]:
                 "password",
                 "device_name",
                 "allowed_command_users",
+                "nsfw",
             ],
         }
 
@@ -134,13 +149,14 @@ async def resolve_credentials() -> Optional[Credentials]:
             password=json_creds["password"],
             device_name=json_creds["device_name"],
             allowed_command_users=set(json_creds["allowed_command_users"]),
+            nsfw=bool(json_creds["nsfw"]),
         )
         print_creds_safe(creds)
 
         bot_creds = creds_to_botlib_creds(creds)
         return Credentials(
             bot_creds=bot_creds,
-            allowed_command_users=creds.allowed_command_users,
+            options=creds,
         )
 
 
