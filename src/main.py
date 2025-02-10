@@ -126,7 +126,8 @@ async def make_bot() -> botlib.Bot:
             traceback.print_exception(e)
 
     @bot.listener.on_startup  # type: ignore
-    async def on_startup(_s):
+    async def on_startup(s):
+        print_timestamped(f"Bot started up: {s}")
         register_emoji_verification(bot, creds)
 
     return bot
