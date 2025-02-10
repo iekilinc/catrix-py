@@ -78,7 +78,7 @@ async def make_bot() -> botlib.Bot:
 
     tags = ("order:random", "nekomimi")
     if not creds.options.nsfw:
-        tags += ("-rating:r",)
+        tags += ("-rating:e",)
     tags_str = "+".join(tags)
 
     @bot.listener.on_message_event  # type: ignore
