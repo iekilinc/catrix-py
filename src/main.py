@@ -1,15 +1,16 @@
 import asyncio
 from http.client import responses
-import mimetypes
 import os
 import sys
 import traceback
 import aiohttp
 from datetime import datetime
 import nio
-from urllib.parse import unquote
+from typing import Any
 from options import resolve_options
 from verification import register_emoji_verification
+from yandere import YandeRe
+from booru import Booru, ReceivedZeroPostsError, InvalidPostJsonError
 import simplematrixbotlib as botlib
 
 CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
@@ -24,7 +25,7 @@ bot_message_prefix = "[]"
 catgirl_id_counter = 0
 
 
-def print_timestamped(msg=""):
+def print_timestamped(msg: str):
     print(f"{datetime.now().isoformat()}: {msg}")
 
 
@@ -86,10 +87,7 @@ async def make_bot() -> botlib.Bot:
         "nyaa~",
     )
 
-    tags = ("order:random", "nekomimi")
-    if not options.default_rating.explicit:
-        tags += ("-rating:e",)
-    tags_str = "+".join(tags)
+    booru = YandeRe(options.default_rating, print_timestamped)
 
     @bot.listener.on_message_event  # type: ignore
     async def on_message(room: nio.MatrixRoom, message: nio.RoomMessageText):
@@ -126,7 +124,7 @@ async def make_bot() -> botlib.Bot:
 
             event_loop = asyncio.get_running_loop()
             task = event_loop.create_task(
-                serve_catgirl(bot, room, message.event_id, catgirl_id, tags_str)
+                serve_catgirl(booru, bot, room, message.event_id, catgirl_id)
             )
             running_tasks.add(task)
             task.add_done_callback(running_tasks.discard)
@@ -144,123 +142,120 @@ async def make_bot() -> botlib.Bot:
 
 
 async def serve_catgirl(
-    bot: botlib.Bot, room: nio.MatrixRoom, in_reply_to: str, catgirl_id: int, tags: str
+    booru: Booru,
+    bot: botlib.Bot,
+    room: nio.MatrixRoom,
+    in_reply_to: str,
+    catgirl_id: int,
 ):
     def log(message=""):
         print_timestamped(f"Catgirl {catgirl_id}: {message}")
 
     log("Called serve_catgirl")
     async with aiohttp.ClientSession() as session:
-        get_url = f"https://yande.re/post.json?limit=1&tags={tags}"
+        post_json: Any
+
+        get_url = booru.get_random_post()
         log(f"GET {get_url}")
         async with session.get(get_url) as resp:
-            log("Got response of post description from yande.re")
             if resp.status != 200:
-                log()
+                log("Bad response")
                 await log_bad_response(resp)
                 log("No catgirl...")
                 return
 
             # Decode JSON body
             try:
-                obj = await resp.json()
+                post_json = await resp.json()
             except Exception as e:
                 log(f"Failed to decode JSON: {e}")
                 return
             log("Decoded JSON response body")
 
-            # Sometimes, we get 0 catgirls for some reason
-            if len(obj) == 0:
-                log(f"Got 0 catgirls?\n\tResponse JSON: {obj}\n\tResponse: {resp}")
-                await bot.api.send_text_message(
-                    room_id=room.room_id,
-                    message=f"{bot_message_prefix} no catgirl for you this time :3\n"
-                    "whatcha gonna do? pounce on me???? >.<",
-                    reply_to=in_reply_to,
-                )
-                return
-            # Get the info we need out and leave the response
-            post = obj[0]
-
-        # Fetch the image
-        img_url = str(post["sample_url"])
-        img_mime = mimetypes.guess_type(img_url)[0]
-        if img_mime is None:
-            log(f"Could not guess mime type of image url: {img_url}. No catgirl...")
+        image = booru.parse_post_json(post_json)
+        if isinstance(image, ReceivedZeroPostsError):
+            log(
+                f"Got 0 catgirls?\n\tResponse JSON: {post_json}\n\tResponse: {resp}\n\tError: {image}",
+            )
+            await bot.api.send_text_message(
+                room_id=room.room_id,
+                message=f"{bot_message_prefix} no catgirl for you this time :3\n"
+                "whatcha gonna do? pounce on me???? >.<",
+                reply_to=in_reply_to,
+            )
             return
-        img_size = int(post["sample_file_size"])
-        img_w = int(post["sample_width"])
-        img_h = int(post["sample_height"])
+        elif isinstance(image, InvalidPostJsonError):
+            log(f"Invalid post JSON: {image}")
+            return
 
-        *_, tail = img_url.split("/")
-        img_filename = unquote(tail)
-
-        log(f"GET {img_url}")
-        async with session.get(img_url) as resp:
-            log("Got response with image from yande.re")
+        log(f"GET {image.url}")
+        async with session.get(image.url) as resp:
             if resp.status != 200:
+                log("Bad response")
                 await log_bad_response(resp)
                 log("No catgirl...")
                 return
 
             # Upload image
-            log("Uploading image to matrix")
+            log("Downloading image from booru and uploading it to matrix")
+            file_size = resp.content_length
+            if file_size is None:
+                file_size = image.file_size
+
             upload_resp, img_keys = await bot.async_client.upload(
                 lambda a, b: resp.content,
                 encrypt=True,
-                content_type=img_mime,
-                filesize=img_size
-                if resp.content_length is None
-                else resp.content_length,
+                content_type=image.mime_type,
+                filesize=file_size,
             )
-            if isinstance(upload_resp, nio.UploadError):
-                log(f"Image upload failed: {upload_resp}\nNo catgirl...")
-                return
-            if img_keys is None:
-                log("Cryptographic information missing\nNo catgirl...")
-                return
 
-            log("Image uploaded")
+    if isinstance(upload_resp, nio.UploadError):
+        log(f"Image upload failed: {upload_resp}\nNo catgirl...")
+        return
+    if img_keys is None:
+        log("Cryptographic information missing\nNo catgirl...")
+        return
 
-            msg_content = {
-                "body": f"{bot_message_prefix} catgirl by {post['author']}: https://yande.re/post/show/{post['id']}",
-                "filename": img_filename,
-                "info": {
-                    "size": img_size,
-                    "mimetype": img_mime,
-                    "thumbnail_info": None,
-                    "thumbnail_url": None,
-                    "w": img_w,
-                    "h": img_h,
-                },
-                "msgtype": "m.image",
-                # "file" is for encrypted
-                "file": {
-                    "url": upload_resp.content_uri,
-                    "v": img_keys["v"],
-                    "key": img_keys["key"],
-                    "iv": img_keys["iv"],
-                    "hashes": img_keys["hashes"],
-                },
-                "m.relates_to": {
-                    "m.in_reply_to": {
-                        "event_id": in_reply_to,
-                    },
-                },
-            }
+    log("Image uploaded")
 
-            # Send message
-            try:
-                log("Sending message with the catgirl image attached")
-                await bot.api._send_room(
-                    room_id=room.room_id,
-                    content=msg_content,
-                )
-                log("Cat served :3\n")
-            except Exception as e:
-                log(f"Could not send message: {e}\nNo catgirl...")
-                traceback.print_exception(e)
-                return
+    msg_content = {
+        "body": f"{bot_message_prefix} catgirl by {image.author}: {image.post_url}",
+        "filename": image.filename,
+        "info": {
+            "size": file_size,
+            "mimetype": image.mime_type,
+            "thumbnail_info": None,
+            "thumbnail_url": None,
+            "w": image.width,
+            "h": image.height,
+        },
+        "msgtype": "m.image",
+        "file": {
+            "url": upload_resp.content_uri,
+            "v": img_keys["v"],
+            "key": img_keys["key"],
+            "iv": img_keys["iv"],
+            "hashes": img_keys["hashes"],
+        },
+        "m.relates_to": {
+            "m.in_reply_to": {
+                "event_id": in_reply_to,
+            },
+        },
+    }
+
+    # Send message
+    try:
+        log("Sending message with the catgirl image attached")
+        await bot.api._send_room(
+            room_id=room.room_id,
+            content=msg_content,
+        )
+        log("Cat served :3\n")
+    except Exception as e:
+        log(f"Could not send message: {e}\nNo catgirl...")
+        traceback.print_exception(e)
+        return
 
 
 def print_message(message: nio.RoomMessageText, room: nio.MatrixRoom):
