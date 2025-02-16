@@ -8,7 +8,7 @@ import aiohttp
 from datetime import datetime
 import nio
 from urllib.parse import unquote
-from .options import resolve_options
+from options import resolve_options
 from verification import register_emoji_verification
 import simplematrixbotlib as botlib
 

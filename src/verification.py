@@ -6,7 +6,7 @@ import nio
 import jsonschema
 import jsonschema.exceptions
 import traceback
-from .options import Options
+from options import Options
 
 
 type LogFn = Callable[[str], None]

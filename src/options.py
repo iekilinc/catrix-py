@@ -7,7 +7,7 @@ from jsonschema import validate
 import simplematrixbotlib as botlib
 from datetime import datetime
 from typing import Self, Any, Callable
-from .booru import Rating
+from booru import Rating
 
 
 json_schema = {
