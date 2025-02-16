@@ -8,11 +8,16 @@ import aiohttp
 from datetime import datetime
 import nio
 from urllib.parse import unquote
-from auth import resolve_credentials
+from .options import resolve_options
 from verification import register_emoji_verification
 import simplematrixbotlib as botlib
 
-STORE_DIR = os.path.abspath("session/store")
+CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
+
+BASE_DIR = os.path.abspath("session")
+STORE_DIR = os.path.join(BASE_DIR, "store")
+AUTH_PATH = os.path.join(BASE_DIR, "auth.txt")
+
 # If a message starts with this string, do not respond to the command.
 # Prepend this prefix to text messages sent by this bot.
 bot_message_prefix = "[]"
@@ -34,13 +39,18 @@ async def log_bad_response(resp: aiohttp.ClientResponse):
 
 
 async def make_bot() -> botlib.Bot:
+    ensure_directory(BASE_DIR)
+    ensure_directory(STORE_DIR)
+
     # Creds
-    creds = await resolve_credentials()
-    if creds is None:
+    options = await resolve_options(
+        options_json_path=CREDENTIALS_JSON_PATH,
+        auth_txt_path=AUTH_PATH,
+        allow_interactive=True,
+    )
+    if options is None:
         raise Exception("Could not resolve credentials")
-    # Session and store dirs
-    initialize_session_dir()
-    initialize_store_dir()
+
     # Config
     config = botlib.Config()
     config.join_on_invite = False
@@ -51,7 +61,7 @@ async def make_bot() -> botlib.Bot:
     config.emoji_verify = False
 
     # Client
-    bot = botlib.Bot(creds.bot_creds, config)
+    bot = botlib.Bot(options.botlib_creds(), config)
 
     running_tasks = set[asyncio.Task[None]]()
 
@@ -77,7 +87,7 @@ async def make_bot() -> botlib.Bot:
     )
 
     tags = ("order:random", "nekomimi")
-    if not creds.options.nsfw:
+    if not options.default_rating.explicit:
         tags += ("-rating:e",)
     tags_str = "+".join(tags)
 
@@ -85,7 +95,7 @@ async def make_bot() -> botlib.Bot:
     async def on_message(room: nio.MatrixRoom, message: nio.RoomMessageText):
         print_message(message, room)
         # Reply only to commands send by allowed command users
-        if message.sender not in creds.options.allowed_command_users:
+        if message.sender not in options.allowed_command_users:
             return
         # The message was sent by this bot, so ignore it
         if message.body.startswith(bot_message_prefix):
@@ -128,7 +138,7 @@ async def make_bot() -> botlib.Bot:
     @bot.listener.on_startup  # type: ignore
     async def on_startup(s):
         print_timestamped(f"Bot started up: {s}")
-        register_emoji_verification(bot, creds)
+        register_emoji_verification(bot, options)
 
     return bot
 
@@ -260,27 +270,16 @@ def print_message(message: nio.RoomMessageText, room: nio.MatrixRoom):
     )
 
 
-def initialize_session_dir() -> None:
-    SESSION_DIR = os.path.abspath("session")
-    if not os.path.exists(SESSION_DIR):
-        os.mkdir(SESSION_DIR)
-        print_timestamped(f"Created session directory at {SESSION_DIR}")
-    else:
-        if not os.path.isdir(SESSION_DIR):
-            raise Exception(f"session ({SESSION_DIR}) exists but is not a directory")
-        else:
-            print_timestamped(f"Using existing session directory at {SESSION_DIR}")
+def ensure_directory(path: str) -> None:
+    if not os.path.exists(path):
+        os.mkdir(path)
+        print_timestamped(f"Created directory at {path}")
+        return
 
-
-def initialize_store_dir() -> None:
-    if not os.path.exists(STORE_DIR):
-        os.mkdir(STORE_DIR)
-        print_timestamped(f"Created store directory at {STORE_DIR}")
+    if os.path.isdir(path):
+        print_timestamped(f"Directory already exists at {path}")
     else:
-        if not os.path.isdir(STORE_DIR):
-            raise Exception(f"Store ({STORE_DIR}) exists but is not a directory")
-        else:
-            print_timestamped(f"Using existing store directory at {STORE_DIR}")
+        raise Exception(f"Existing path is not a directory: {path}")
 
 
 if __name__ == "__main__":

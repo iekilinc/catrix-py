@@ -6,7 +6,7 @@ import nio
 import jsonschema
 import jsonschema.exceptions
 import traceback
-from auth import Credentials
+from .options import Options
 
 
 type LogFn = Callable[[str], None]
@@ -53,10 +53,10 @@ def with_logs[Ev: EventType](event_type: Type[Ev]):
     return decorate
 
 
-def with_allowed_sender_only[Ev: EventType](event_type: Type[Ev], creds: Credentials):
+def with_allowed_sender_only[Ev: EventType](event_type: Type[Ev], options: Options):
     def decorate(callback: EventHandler[Ev]) -> EventHandler[Ev]:
         async def wrapper(event: Ev, log: LogFn) -> None:
-            if event.sender not in creds.options.allowed_command_users:
+            if event.sender not in options.allowed_command_users:
                 log("User is not in the list of allowed command users. Ignoring event.")
                 return
 
@@ -68,11 +68,11 @@ def with_allowed_sender_only[Ev: EventType](event_type: Type[Ev], creds: Credent
     return decorate
 
 
-def safe_handler[Ev: EventType](event_type: Type[Ev], creds: Credentials):
+def safe_handler[Ev: EventType](event_type: Type[Ev], options: Options):
     def decorate(callback: EventHandler[Ev]) -> InternalEventHandler[Ev]:
         @with_logger(event_type)
         @with_logs(event_type)
-        @with_allowed_sender_only(event_type, creds)
+        @with_allowed_sender_only(event_type, options)
         async def wrapper(event: Ev, log: LogFn) -> None:
             await callback(event, log)
 
@@ -153,15 +153,15 @@ class KeyVerificationDone:
 
 # Inspired by https://github.com/matrix-nio/matrix-nio/blob/706597708eb109e763d7537d30bed97533f958b0/examples/verify_with_emoji.py and https://github.com/wreald/matrix-nio/commit/5cb8e99965bcb622101b1d6ad6fa86f5a9debb9a
 # Related: https://github.com/matrix-nio/matrix-nio/issues/430
-def register_emoji_verification(bot: botlib.Bot, creds: Credentials):
+def register_emoji_verification(bot: botlib.Bot, options: Options):
     def register[Ev: nio.ToDeviceEvent](event_type: Type[Ev]):
         def decorate(callback: EventHandler[Ev]) -> None:
-            handler = safe_handler(event_type, creds)(callback)
+            handler = safe_handler(event_type, options)(callback)
             register_handler(event_type, bot, handler)
 
         return decorate
 
-    @safe_handler(KeyVerificationRequest, creds)
+    @safe_handler(KeyVerificationRequest, options)
     async def on_key_verification_request(
         event: KeyVerificationRequest, log: LogFn
     ) -> None:
@@ -305,7 +305,7 @@ def register_emoji_verification(bot: botlib.Bot, creds: Credentials):
 
         log("Mac stage executed successfully")
 
-    @safe_handler(KeyVerificationDone, creds)
+    @safe_handler(KeyVerificationDone, options)
     async def on_key_verification_done(event: KeyVerificationDone, log: LogFn) -> None:
         log(f"Emoji verification concluded: Transaction ID: {event.transaction_id}")
 
