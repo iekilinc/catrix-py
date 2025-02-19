@@ -46,9 +46,13 @@ class YandeRe(Booru):
         url = "https://yande.re/post.json?limit=1"
 
         rating = self.default_rating if rating_override is None else rating_override
-        tags = frozenset(("order:random",)) | rating.tags()
+        rating_tag = rating.tag()
 
-        tags_str = "+".join(tags)
+        tags = set[str](("order:random",))
+        if rating_tag is not None:
+            tags.add(rating_tag)
+
+        tags_str = TAG_SEPERATOR.join(tags)
         if tags_str != "":
             url = f"{url}&tags={tags_str}"
 

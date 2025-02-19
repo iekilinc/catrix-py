@@ -1,47 +1,35 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Literal, Any
-
-type Tag = Literal["safe"] | Literal["questionable"] | Literal["explicit"]
-
-ALL_TAGS = frozenset[Tag](("safe", "questionable", "explicit"))
+from typing import NamedTuple, Optional, Any
+from dataclasses import dataclass
 
 
-class Rating(NamedTuple):
+class NoRatingIsAllowedError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class Rating:
     safe: bool
     questionable: bool
     explicit: bool
 
-    def tags(self) -> frozenset[str]:
-        if self in rating_tags_memo:
-            return rating_tags_memo[self]
+    def __post_init__(self) -> None:
+        if not self.safe and not self.questionable and not self.explicit:
+            raise NoRatingIsAllowedError("No rating is allowed")
 
-        tags = set[Tag]()
-        if self.safe:
-            tags.add("safe")
-        if self.questionable:
-            tags.add("questionable")
-        if self.explicit:
-            tags.add("explicit")
-
-        result: frozenset[str]
-        if len(tags) == 3:
-            result = frozenset()
-        elif len(tags) == 2:
-            (exclude,) = ALL_TAGS.difference(tags)
-            tag = f"-rating:{exclude}"
-            result = frozenset((tag,))
-        elif len(tags) == 1:
-            (include,) = ALL_TAGS.intersection(tags)
-            tag = f"rating:{include}"
-            result = frozenset((tag,))
-        else:
-            raise RuntimeError("len(tags) must be [0, 3]")
-
-        rating_tags_memo[self] = result
-        return result
+    def tag(self) -> str | None:
+        return rating_map[self]
 
 
-rating_tags_memo = dict[Rating, frozenset[str]]()
+rating_map: dict[Rating, str | None] = {
+    Rating(safe=True, questionable=True, explicit=True): None,
+    Rating(safe=True, questionable=False, explicit=False): "rating:safe",
+    Rating(safe=False, questionable=True, explicit=False): "rating:questionable",
+    Rating(safe=False, questionable=False, explicit=True): "rating:explicit",
+    Rating(safe=False, questionable=True, explicit=True): "-rating:safe",
+    Rating(safe=True, questionable=False, explicit=True): "-rating:questionable",
+    Rating(safe=True, questionable=True, explicit=False): "-rating:explicit",
+}
 
 
 class ImageProps(NamedTuple):
