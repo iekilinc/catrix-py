@@ -42,15 +42,20 @@ json_schema = {
 }
 
 
+class Paths(NamedTuple):
+    auth_txt: str
+    store_dir: str
+
+
 class Options(NamedTuple):
     homeserver: str
     username: str
     password: str
     device_name: str
-    auth_txt_path: str
     allowed_command_users: set[str]
     default_rating: Rating
     allow_interactive: bool
+    paths: Paths
 
     def to_json_str(self, redact_sensitive: bool) -> str:
         json = {
@@ -69,7 +74,12 @@ class Options(NamedTuple):
         return dumps(json, indent=4)
 
     @classmethod
-    def from_json(cls, json: Any, auth_txt_path: str, allow_interactive: bool) -> Self:
+    def from_json(
+        cls,
+        json: Any,
+        paths: Paths,
+        allow_interactive: bool,
+    ) -> Self:
         validate(json, json_schema)
         rating_json = json["default_rating"]
         options = cls(
@@ -77,7 +87,6 @@ class Options(NamedTuple):
             username=json["username"],
             password=json["password"],
             device_name=json["device_name"],
-            auth_txt_path=auth_txt_path,
             allowed_command_users=set(json["allowed_command_users"]),
             default_rating=Rating(
                 safe=rating_json["safe"],
@@ -85,6 +94,7 @@ class Options(NamedTuple):
                 explicit=rating_json["explicit"],
             ),
             allow_interactive=allow_interactive,
+            paths=paths,
         )
         return options
 
@@ -93,7 +103,7 @@ class Options(NamedTuple):
             homeserver=self.homeserver,
             username=self.username,
             password=self.password,
-            session_stored_file=self.auth_txt_path,
+            session_stored_file=self.paths.auth_txt,
         )
         return creds
 
@@ -156,7 +166,7 @@ def log(message: str):
     print(f"{datetime.now().isoformat()}: {message}")
 
 
-def prompt_options(auth_txt_path: str) -> Options:
+def prompt_options(paths: Paths) -> Options:
     homeserver = prompt(
         "Enter full homeserver URL", default="https://matrix-client.matrix.org"
     )
@@ -174,7 +184,6 @@ def prompt_options(auth_txt_path: str) -> Options:
         username=username,
         password=password,
         device_name=device_name,
-        auth_txt_path=auth_txt_path,
         allowed_command_users=set(allowed_command_users),
         allow_interactive=True,
         default_rating=Rating(
@@ -182,11 +191,14 @@ def prompt_options(auth_txt_path: str) -> Options:
             questionable=allow_questionable,
             explicit=allow_explicit,
         ),
+        paths=paths,
     )
 
 
 async def resolve_options(
-    options_json_path: str, auth_txt_path: str, allow_interactive: bool
+    options_json_path: str,
+    paths: Paths,
+    allow_interactive: bool,
 ) -> Optional[Options]:
     try:
         async with aiofiles.open(options_json_path, mode="r") as r_file:
@@ -196,7 +208,7 @@ async def resolve_options(
             json = loads(contents)
             return Options.from_json(
                 json,
-                auth_txt_path=auth_txt_path,
+                paths=paths,
                 allow_interactive=allow_interactive,
             )
 
@@ -207,7 +219,7 @@ async def resolve_options(
             log("Interactivity not allowed. Will not prompt for options.")
             return None
 
-        options = prompt_options(auth_txt_path=auth_txt_path)
+        options = prompt_options(paths=paths)
         json_str_sensitive = options.to_json_str(redact_sensitive=False)
         json_str_redacted = options.to_json_str(redact_sensitive=True)
 

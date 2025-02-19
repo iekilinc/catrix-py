@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Any
+from typing import NamedTuple, Optional, Any, Self
 from dataclasses import dataclass
 
 
@@ -19,6 +19,13 @@ class Rating:
 
     def tag(self) -> str | None:
         return rating_map[self]
+
+    def invert(self) -> "Rating":
+        return Rating(
+            safe=not self.safe,
+            questionable=not self.questionable,
+            explicit=not self.explicit,
+        )
 
 
 rating_map: dict[Rating, str | None] = {
