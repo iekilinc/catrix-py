@@ -48,7 +48,7 @@ class YandeRe(Booru):
         rating = self.default_rating if rating_override is None else rating_override
         rating_tag = rating.tag()
 
-        tags = set[str](("order:random",))
+        tags = set[str](("order:random", "nekomimi"))
         if rating_tag is not None:
             tags.add(rating_tag)
 
