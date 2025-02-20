@@ -2,7 +2,7 @@ import simplematrixbotlib as botlib
 from nio import MatrixRoom, Event as RoomEvent, ToDeviceEvent, RoomMessageText
 from typing import Type, Callable, Awaitable, Any, Optional
 from datetime import datetime
-from asyncio import get_event_loop
+from asyncio import get_event_loop, sleep, TaskGroup
 
 from options import Options
 from command import ParsedCommand, Command
@@ -78,13 +78,15 @@ class Bot:
         self._booru = YandeRe(default_rating=options.default_rating, log=booru_log)
 
     async def amain(self) -> None:
-        await self._lib_bot.main()
+        async with TaskGroup() as tg:
+            tg.create_task(self._lib_bot.main())
+            tg.create_task(self._ensure_on_startup_runs())
 
-    async def _on_startup(self, _: str) -> None:
+    async def _on_startup(self, source: str) -> None:
         if self._ran_startup:
             return
         self._ran_startup = True
-        self._log("Startup: Registering event handlers...")
+        self._log(f"Startup: Signal received: {source}")
         self._register_event_handlers()
         self._log("Startup: Event handlers registered")
 
@@ -110,6 +112,11 @@ class Bot:
     def _register_event_handlers(self) -> None:
         self._add_room_event_callback(RoomMessageText, self._handle_text_message)
         register_emoji_verification(self._lib_bot, self._options)
+
+    async def _ensure_on_startup_runs(self) -> None:
+        timeous_sec = 20
+        await sleep(timeous_sec)
+        await self._on_startup("_ensure_on_startup_runs")
 
     # Receive text message
 
