@@ -84,7 +84,7 @@ class YandeRe(Booru):
 
         author = str(post["author"])
         post_id = str(post["id"])
-        post_url = f"https://yande.re/posts/show/{post_id}"
+        post_url = f"https://yande.re/post/show/{post_id}"
 
         return ImageProps(
             url=url,
