@@ -114,7 +114,7 @@ class Bot:
         register_emoji_verification(self._lib_bot, self._options)
 
     async def _ensure_on_startup_runs(self) -> None:
-        timeous_sec = 20
+        timeous_sec = 40
         await sleep(timeous_sec)
         await self._on_startup("_ensure_on_startup_runs")
 
