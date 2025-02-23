@@ -81,9 +81,9 @@ class ParsedCommand(NamedTuple):
         rating: Rating | None = None
         # command_prefix = match.group(1)
         # rating_separator = match.group(2)
-        rating_specifier = match.group(3).lower()
+        rating_specifier = match.group(3)
         if rating_specifier is not None:
-            rating = RATING_MAP[rating_specifier]
+            rating = RATING_MAP[rating_specifier.lower()]
 
         return cls(rating=rating)
 
