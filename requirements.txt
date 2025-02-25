@@ -3,6 +3,8 @@ aiohappyeyeballs==2.4.4
 aiohttp==3.11.11
 aiohttp-socks==0.8.4
 aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.8.0
 atomicwrites==1.4.1
 attrs==25.1.0
 cachetools==5.5.1
@@ -15,6 +17,8 @@ frozenlist==1.5.0
 h11==0.14.0
 h2==4.1.0
 hpack==4.1.0
+httpcore==1.0.7
+httpx==0.28.1
 hyperframe==6.1.0
 idna==3.10
 jsonschema==4.23.0
@@ -22,12 +26,15 @@ jsonschema-specifications==2024.10.1
 Markdown==3.7
 matrix-nio==0.24.0
 multidict==6.1.0
+ollama==0.4.7
 peewee==3.17.8
 pillow==10.4.0
 pipreqs==0.4.13
 propcache==0.2.1
 pycparser==2.22
 pycryptodome==3.21.0
+pydantic==2.10.6
+pydantic_core==2.27.2
 python-cryptography-fernet-wrapper==1.0.4
 python-olm==3.2.16
 python-socks==2.7.0
@@ -35,7 +42,9 @@ referencing==0.36.2
 requests==2.32.3
 rpds-py==0.22.3
 simplematrixbotlib==2.12.2
+sniffio==1.3.1
 toml==0.10.2
+typing_extensions==4.12.2
 unpaddedbase64==2.1.0
 urllib3==2.3.0
 yarg==0.1.10

@@ -8,3 +8,13 @@ services:
       - "./credentials.json:/app/credentials.json:Z"
       - "./session:/app/session:Z"
     restart: unless-stopped
+
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama:

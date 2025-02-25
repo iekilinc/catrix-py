@@ -30,6 +30,16 @@ json_schema = {
             },
             "required": ["safe", "questionable", "explicit"],
         },
+        "ollama": {
+            "type": "object",
+            "properties": {
+                "bot_name": {"type": "string"},
+                "model": {"type": "string"},
+                "last_n_messages": {"type": "number"},
+                "prompt_prefix": {"type": "string"},
+            },
+            "required": ["bot_name", "model", "last_n_messages", "prompt_prefix"],
+        },
     },
     "required": [
         "homeserver",
@@ -47,6 +57,13 @@ class Paths(NamedTuple):
     store_dir: str
 
 
+class Ollama(NamedTuple):
+    bot_name: str
+    model: str
+    last_n_messages: int
+    prompt_prefix: str
+
+
 class Options(NamedTuple):
     homeserver: str
     username: str
@@ -54,6 +71,7 @@ class Options(NamedTuple):
     device_name: str
     allowed_command_users: set[str]
     default_rating: Rating
+    ollama: Optional[Ollama]
     allow_interactive: bool
     paths: Paths
 
@@ -70,6 +88,14 @@ class Options(NamedTuple):
                 "explicit": self.default_rating.explicit,
             },
         }
+        if self.ollama is not None:
+            json["ollama"] = {
+                "bot_name": self.ollama.bot_name,
+                "model": self.ollama.model,
+                "last_n_messages": self.ollama.last_n_messages,
+                "prompt_prefix": self.ollama.prompt_prefix,
+            }
+
         validate(json, json_schema)
         return dumps(json, indent=4)
 
@@ -82,6 +108,16 @@ class Options(NamedTuple):
     ) -> Self:
         validate(json, json_schema)
         rating_json = json["default_rating"]
+        ollama: Ollama | None = None
+        if "ollama" in json:
+            ollama_json = json["ollama"]
+            ollama = Ollama(
+                bot_name=ollama_json["bot_name"],
+                model=ollama_json["model"],
+                last_n_messages=int(ollama_json["last_n_messages"]),
+                prompt_prefix=ollama_json["prompt_prefix"],
+            )
+
         options = cls(
             homeserver=json["homeserver"],
             username=json["username"],
@@ -93,6 +129,7 @@ class Options(NamedTuple):
                 questionable=rating_json["questionable"],
                 explicit=rating_json["explicit"],
             ),
+            ollama=ollama,
             allow_interactive=allow_interactive,
             paths=paths,
         )
@@ -191,6 +228,7 @@ def prompt_options(paths: Paths) -> Options:
             questionable=allow_questionable,
             explicit=allow_explicit,
         ),
+        ollama=None,
         paths=paths,
     )
 
