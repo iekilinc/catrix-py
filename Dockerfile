@@ -4,9 +4,7 @@ WORKDIR /app
 FROM base AS deps
 # python-olm requires a C/C++ compiler and cmake/gmake.
 RUN apk add --no-cache build-base cmake
-COPY .python-version .
-COPY pyproject.toml .
-COPY uv.lock .
+COPY .python-version pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-cache
 
 FROM base
