@@ -1,19 +1,17 @@
-FROM python:3.13-alpine AS base
+FROM ghcr.io/astral-sh/uv:python3.13-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
 # python-olm requires a C/C++ compiler and cmake/gmake.
 RUN apk add --no-cache build-base cmake
-COPY requirements.txt .
-ENV PIP_NO_CACHE_DIR=1
-RUN python -m venv /.venv && \
-    . /.venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+COPY .python-version .
+COPY pyproject.toml .
+COPY uv.lock .
+RUN uv sync --frozen --no-cache
 
 FROM base
-COPY --from=deps /.venv /.venv
-ENV PATH="/.venv/bin:$PATH" \
+COPY --from=deps /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 COPY src src
