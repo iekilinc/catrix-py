@@ -21,6 +21,7 @@ class Ollama(BaseModel, frozen=True):
     last_n_messages: int
     prompt_prefix: str
     temperature: Optional[int] = None
+    max_token_suggestion: int = 60
 
 
 class OptionsJson(BaseModel, frozen=True):

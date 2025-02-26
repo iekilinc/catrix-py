@@ -258,11 +258,13 @@ class Bot:
                 f"\n{time_str} - user {room.user_name(msg.sender)} said: {msg.body!r}"
             )
 
+        max_token_suggestion = ollama.options.max_token_suggestion
+
         prompt = f"""
 {ollama.options.prompt_prefix}
 {past_messages_str}
 
-Now, keep all of these messages in mind and respond directly to the very last message, producing human-readable output. Please provide a complete response within 60 tokens.
+Now, keep all of these messages in mind and respond directly to the very last message, producing human-readable output. Please provide a complete response within {max_token_suggestion} tokens.
 """
 
         log(f"Sending prompt to Ollama: {prompt!r}")
@@ -276,7 +278,7 @@ Now, keep all of these messages in mind and respond directly to the very last me
             ],
             stream=False,
             options=ChatOptions(
-                num_predict=120,
+                num_predict=max_token_suggestion * 2,
                 temperature=ollama.options.temperature,
             ),
         )
