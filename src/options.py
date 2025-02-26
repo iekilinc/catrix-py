@@ -90,6 +90,7 @@ class Options(BaseModel, frozen=True):
             homeserver=self.homeserver,
             username=self.username,
             password=self.password,
+            device_name=self.device_name,
             session_stored_file=self.paths.auth_txt,
         )
         return creds
