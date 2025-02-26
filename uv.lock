@@ -130,6 +130,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "matrix-nio", extra = ["e2e"] },
     { name = "ollama" },
+    { name = "pydantic" },
     { name = "simplematrixbotlib" },
 ]
 
@@ -137,6 +138,7 @@ dependencies = [
 requires-dist = [
     { name = "matrix-nio", extras = ["e2e"], specifier = ">=0.24.0" },
     { name = "ollama", specifier = ">=0.4.7" },
+    { name = "pydantic", specifier = ">=2.10.6" },
     { name = "simplematrixbotlib", specifier = ">=2.12.3" },
 ]
 

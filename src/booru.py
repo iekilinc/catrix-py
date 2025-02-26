@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional, Any, Self
-from dataclasses import dataclass
+from typing import NamedTuple, Optional, Any
+from pydantic import BaseModel
 
 
 class NoRatingIsAllowedError(Exception):
     pass
 
 
-@dataclass(frozen=True)
-class Rating:
+class Rating(BaseModel, frozen=True):
     safe: bool
     questionable: bool
     explicit: bool

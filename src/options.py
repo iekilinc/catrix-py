@@ -3,53 +3,11 @@ from getpass import getpass
 from json import dumps, loads
 from typing import Optional
 import aiofiles
-from jsonschema import validate
 import simplematrixbotlib as botlib
 from datetime import datetime
 from typing import Self, Any, Callable
 from booru import Rating
-
-
-json_schema = {
-    "type": "object",
-    "properties": {
-        "homeserver": {"type": "string"},
-        "username": {"type": "string"},
-        "password": {"type": "string"},
-        "device_name": {"type": "string"},
-        "allowed_command_users": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "default_rating": {
-            "type": "object",
-            "properties": {
-                "safe": {"type": "boolean"},
-                "questionable": {"type": "boolean"},
-                "explicit": {"type": "boolean"},
-            },
-            "required": ["safe", "questionable", "explicit"],
-        },
-        "ollama": {
-            "type": "object",
-            "properties": {
-                "bot_name": {"type": "string"},
-                "model": {"type": "string"},
-                "last_n_messages": {"type": "number"},
-                "prompt_prefix": {"type": "string"},
-            },
-            "required": ["bot_name", "model", "last_n_messages", "prompt_prefix"],
-        },
-    },
-    "required": [
-        "homeserver",
-        "username",
-        "password",
-        "device_name",
-        "allowed_command_users",
-        "default_rating",
-    ],
-}
+from pydantic import BaseModel
 
 
 class Paths(NamedTuple):
@@ -57,14 +15,24 @@ class Paths(NamedTuple):
     store_dir: str
 
 
-class Ollama(NamedTuple):
+class Ollama(BaseModel, frozen=True):
     bot_name: str
     model: str
     last_n_messages: int
     prompt_prefix: str
 
 
-class Options(NamedTuple):
+class OptionsJson(BaseModel, frozen=True):
+    homeserver: str
+    username: str
+    password: str
+    device_name: str
+    allowed_command_users: list[str]
+    default_rating: Rating
+    ollama: Optional[Ollama] = None
+
+
+class Options(BaseModel, frozen=True):
     homeserver: str
     username: str
     password: str
@@ -74,30 +42,34 @@ class Options(NamedTuple):
     ollama: Optional[Ollama]
     allow_interactive: bool
     paths: Paths
+    as_json: OptionsJson
 
     def to_json_str(self, redact_sensitive: bool) -> str:
-        json = {
-            "homeserver": self.homeserver,
-            "username": self.username,
-            "password": redact(str(self.password), redact_sensitive),
-            "device_name": self.device_name,
-            "allowed_command_users": list(self.allowed_command_users),
-            "default_rating": {
-                "safe": self.default_rating.safe,
-                "questionable": self.default_rating.questionable,
-                "explicit": self.default_rating.explicit,
-            },
-        }
-        if self.ollama is not None:
-            json["ollama"] = {
-                "bot_name": self.ollama.bot_name,
-                "model": self.ollama.model,
-                "last_n_messages": self.ollama.last_n_messages,
-                "prompt_prefix": self.ollama.prompt_prefix,
-            }
+        json = self.as_json.model_dump()
+        if redact_sensitive:
+            json["password"] = "<redacted>"
 
-        validate(json, json_schema)
-        return dumps(json, indent=4)
+        return dumps(json, indent=2)
+
+    @classmethod
+    def from_options_json(
+        cls,
+        options: OptionsJson,
+        paths: Paths,
+        allow_interactive: bool,
+    ) -> Self:
+        return cls(
+            homeserver=options.homeserver,
+            username=options.username,
+            password=options.password,
+            device_name=options.device_name,
+            allowed_command_users=set(options.allowed_command_users),
+            default_rating=options.default_rating,
+            ollama=options.ollama,
+            allow_interactive=allow_interactive,
+            paths=paths,
+            as_json=options,
+        )
 
     @classmethod
     def from_json(
@@ -106,34 +78,12 @@ class Options(NamedTuple):
         paths: Paths,
         allow_interactive: bool,
     ) -> Self:
-        validate(json, json_schema)
-        rating_json = json["default_rating"]
-        ollama: Ollama | None = None
-        if "ollama" in json:
-            ollama_json = json["ollama"]
-            ollama = Ollama(
-                bot_name=ollama_json["bot_name"],
-                model=ollama_json["model"],
-                last_n_messages=int(ollama_json["last_n_messages"]),
-                prompt_prefix=ollama_json["prompt_prefix"],
-            )
-
-        options = cls(
-            homeserver=json["homeserver"],
-            username=json["username"],
-            password=json["password"],
-            device_name=json["device_name"],
-            allowed_command_users=set(json["allowed_command_users"]),
-            default_rating=Rating(
-                safe=rating_json["safe"],
-                questionable=rating_json["questionable"],
-                explicit=rating_json["explicit"],
-            ),
-            ollama=ollama,
-            allow_interactive=allow_interactive,
+        options = OptionsJson.model_validate(json, strict=True)
+        return cls.from_options_json(
+            options,
             paths=paths,
+            allow_interactive=allow_interactive,
         )
-        return options
 
     def botlib_creds(self) -> botlib.Creds:
         creds = botlib.Creds(
@@ -143,13 +93,6 @@ class Options(NamedTuple):
             session_stored_file=self.paths.auth_txt,
         )
         return creds
-
-
-def redact(source: str, do_redact: bool) -> str:
-    if do_redact:
-        return "<redacted>"
-    else:
-        return source
 
 
 def prompt(message: str, default: Optional[str] = None, password: bool = False) -> str:
@@ -216,21 +159,20 @@ def prompt_options(paths: Paths) -> Options:
     allow_safe = prompt_bool("Allow rating:safe?", default=True)
     allow_questionable = prompt_bool("Allow rating:questionable?")
     allow_explicit = prompt_bool("Allow rating:explicit?")
-    return Options(
+
+    options = OptionsJson(
         homeserver=homeserver,
         username=username,
         password=password,
         device_name=device_name,
-        allowed_command_users=set(allowed_command_users),
-        allow_interactive=True,
+        allowed_command_users=allowed_command_users,
         default_rating=Rating(
             safe=allow_safe,
             questionable=allow_questionable,
             explicit=allow_explicit,
         ),
-        ollama=None,
-        paths=paths,
     )
+    return Options.from_options_json(options, paths=paths, allow_interactive=True)
 
 
 async def resolve_options(
@@ -265,3 +207,5 @@ async def resolve_options(
         log(f"Saving options to file at {options_json_path}")
         async with aiofiles.open(options_json_path, "w") as w_file:
             await w_file.write(json_str_sensitive)
+
+        return options
