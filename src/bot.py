@@ -277,6 +277,7 @@ Now, keep all of these messages in mind and respond directly to the very last me
             stream=False,
             options=ChatOptions(
                 num_predict=120,
+                temperature=ollama.options.temperature,
             ),
         )
         log(f"Got response: {response.model_dump_json(indent=2)}")

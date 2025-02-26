@@ -20,6 +20,7 @@ class Ollama(BaseModel, frozen=True):
     model: str
     last_n_messages: int
     prompt_prefix: str
+    temperature: Optional[int] = None
 
 
 class OptionsJson(BaseModel, frozen=True):
