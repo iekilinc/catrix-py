@@ -20,7 +20,7 @@ class Ollama(BaseModel, frozen=True):
     model: str
     last_n_messages: int
     prompt_prefix: str
-    temperature: Optional[int] = None
+    temperature: Optional[float] = None
     max_token_suggestion: int = 60
 
 
