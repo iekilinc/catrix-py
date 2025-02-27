@@ -254,9 +254,15 @@ class Bot:
             time = datetime.fromtimestamp(msg.server_timestamp / 1000)
             time_str = time.strftime("At %I:%M %p on %A, %B %d, %Y")
 
-            past_messages_str += (
-                f"\n{time_str} - user {room.user_name(msg.sender)} said: {msg.body!r}"
-            )
+            user_title: str
+            if msg.sender == room.own_user_id and msg.body.startswith(
+                ollama.ingore_prefix
+            ):
+                user_title = "you"
+            else:
+                user_title = f"user {room.user_name(msg.sender)}"
+
+            past_messages_str += f"\n{time_str} - {user_title} said: {msg.body!r}"
 
         max_token_suggestion = ollama.options.max_token_suggestion
 
