@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - "./credentials.json:/app/credentials.json:Z"
+      - "./options.json:/app/options.json:Z"
       - "./session:/app/session:Z"
     restart: unless-stopped
 

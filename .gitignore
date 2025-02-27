@@ -5,8 +5,8 @@ __pycache__
 *.pyc
 *.pyo
 
-# Private credentials and session data
-credentials.json
+# Private credentials, options, and session data
+options.json
 session/
 .env
 .env.*

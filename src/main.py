@@ -25,7 +25,7 @@ def ensure_directory(path: str) -> None:
 
 
 async def amain() -> None:
-    CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
+    OPTIONS_JSON_PATH = os.path.abspath("options.json")
 
     BASE_DIR = os.path.abspath("session")
     STORE_DIR = os.path.join(BASE_DIR, "store")
@@ -41,12 +41,12 @@ async def amain() -> None:
         store_dir=STORE_DIR,
     )
     options = await resolve_options(
-        options_json_path=CREDENTIALS_JSON_PATH,
+        options_json_path=OPTIONS_JSON_PATH,
         paths=paths,
         allow_interactive=True,
     )
     if options is None:
-        raise Exception("Could not resolve credentials")
+        raise Exception("Could not resolve options")
 
     bot = Bot(options)
 
