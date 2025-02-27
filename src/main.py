@@ -3,7 +3,6 @@ import os
 import sys
 import traceback
 from datetime import datetime
-import simplematrixbotlib as botlib
 
 from options import resolve_options, Paths
 from bot import Bot
@@ -51,38 +50,6 @@ async def amain() -> None:
     bot = Bot(options)
 
     await bot.amain()
-
-
-async def make_client(creds: botlib.Creds) -> botlib.Bot:
-    ensure_directory(BASE_DIR)
-    ensure_directory(STORE_DIR)
-
-    paths = Paths(
-        auth_txt=AUTH_PATH,
-        store_dir=STORE_DIR,
-    )
-    # Creds
-    options = await resolve_options(
-        options_json_path=CREDENTIALS_JSON_PATH,
-        paths=paths,
-        allow_interactive=True,
-    )
-    if options is None:
-        raise Exception("Could not resolve credentials")
-
-    # Config
-    config = botlib.Config()
-    config.join_on_invite = False
-    config.encryption_enabled = True
-    config.ignore_unverified_devices = True
-    config.store_path = STORE_DIR
-    # Doesn't even work
-    config.emoji_verify = False
-
-    # Client
-    bot = botlib.Bot(options.botlib_creds(), config)
-
-    return bot
 
 
 if __name__ == "__main__":
