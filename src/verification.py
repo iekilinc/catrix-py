@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Type, Callable, Awaitable
+from typing import Type, Callable, Awaitable, Literal
 from dataclasses import dataclass
 import simplematrixbotlib as botlib
 import nio
-import jsonschema
-import jsonschema.exceptions
 import traceback
+from pydantic import BaseModel
+
 from options import Options
 
 
@@ -90,65 +90,53 @@ def register_handler[Ev: nio.ToDeviceEvent](
     )
 
 
-key_verification_request_schema = {
-    "type": "object",
-    "properties": {
-        "type": {"constant": "m.key.verification.request"},
-        "content": {
-            "type": "object",
-            "properties": {
-                "from_device": {"type": "string"},
-                "methods": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "timestamp": {"type": "number"},
-                "transaction_id": {"type": "string"},
-            },
-            "required": ["from_device", "methods", "timestamp", "transaction_id"],
-        },
-    },
-    "required": ["type", "content"],
-}
-
-
-@dataclass
-class KeyVerificationRequest:
-    base: nio.UnknownToDeviceEvent
+class _KeyVerificationRequestJsonContent(BaseModel):
     from_device: str
     methods: list[str]
     timestamp: int
     transaction_id: str
 
+
+class _KeyVerificationRequestJson(BaseModel):
+    type: Literal["m.key.verification.request"]
+    content: _KeyVerificationRequestJsonContent
+
+
+@dataclass
+class KeyVerificationRequest:
+    base: nio.UnknownToDeviceEvent
+    json: _KeyVerificationRequestJson
+
     @property
     def sender(self):
         return self.base.sender
 
+    @property
+    def content(self):
+        return self.json.content
 
-key_verification_done_schema = {
-    "type": "object",
-    "properties": {
-        "type": {"constant": "m.key.verification.done"},
-        "content": {
-            "type": "object",
-            "properties": {
-                "transaction_id": {"type": "string"},
-            },
-            "required": ["transaction_id"],
-        },
-    },
-    "required": ["type", "content"],
-}
+
+class _KeyVerificationDoneJsonContent(BaseModel):
+    transaction_id: str
+
+
+class _KeyVerificationDoneJson(BaseModel):
+    type: Literal["m.key.verification.done"]
+    content: _KeyVerificationDoneJsonContent
 
 
 @dataclass
 class KeyVerificationDone:
     base: nio.UnknownToDeviceEvent
-    transaction_id: str
+    json: _KeyVerificationDoneJson
 
     @property
     def sender(self):
         return self.base.sender
+
+    @property
+    def content(self):
+        return self.json.content
 
 
 # Inspired by https://github.com/matrix-nio/matrix-nio/blob/706597708eb109e763d7537d30bed97533f958b0/examples/verify_with_emoji.py and https://github.com/wreald/matrix-nio/commit/5cb8e99965bcb622101b1d6ad6fa86f5a9debb9a
@@ -165,7 +153,7 @@ def register_emoji_verification(bot: botlib.Bot, options: Options):
     async def on_key_verification_request(
         event: KeyVerificationRequest, log: LogFn
     ) -> None:
-        if "m.sas.v1" not in event.methods:
+        if "m.sas.v1" not in event.content.methods:
             log("Sender does not support SAS v1 verification")
             return
 
@@ -174,15 +162,18 @@ def register_emoji_verification(bot: botlib.Bot, options: Options):
         ready_msg = nio.ToDeviceMessage(
             type="m.key.verification.ready",
             recipient=event.sender,
-            recipient_device=event.from_device,
+            recipient_device=event.content.from_device,
             content={
                 "from_device": bot.async_client.device_id,
                 "methods": ["m.sas.v1"],
-                "transaction_id": event.transaction_id,
+                "transaction_id": event.content.transaction_id,
             },
         )
         log("Sending m.key.verification.ready event...")
-        ready_resp = await bot.async_client.to_device(ready_msg, event.transaction_id)
+        ready_resp = await bot.async_client.to_device(
+            ready_msg,
+            event.content.transaction_id,
+        )
         if isinstance(ready_resp, nio.ToDeviceError):
             log(f"Failed to send ready event: {ready_resp}")
             return
@@ -307,38 +298,23 @@ def register_emoji_verification(bot: botlib.Bot, options: Options):
 
     @safe_handler(KeyVerificationDone, options)
     async def on_key_verification_done(event: KeyVerificationDone, log: LogFn) -> None:
-        log(f"Emoji verification concluded: Transaction ID: {event.transaction_id}")
+        log(
+            f"Emoji verification concluded: Transaction ID: {event.content.transaction_id}"
+        )
 
     @register(nio.UnknownToDeviceEvent)
     async def on_unknown_event(event: nio.UnknownToDeviceEvent, log: LogFn) -> None:
         if event.source["type"] == "m.key.verification.request":
-            try:
-                jsonschema.validate(event.source, key_verification_request_schema)
-            except jsonschema.exceptions.ValidationError as e:
-                log(f"Invalid key verification request payload: {e}")
-                return
-
-            request_event = KeyVerificationRequest(
-                base=event,
-                from_device=event.source["content"]["from_device"],
-                methods=event.source["content"]["methods"],
-                timestamp=event.source["content"]["timestamp"],
-                transaction_id=event.source["content"]["transaction_id"],
+            request_event = _KeyVerificationRequestJson.model_validate(event.source)
+            await on_key_verification_request(
+                KeyVerificationRequest(base=event, json=request_event)
             )
-            await on_key_verification_request(request_event)
 
         elif event.source["type"] == "m.key.verification.done":
-            try:
-                jsonschema.validate(event.source, key_verification_done_schema)
-            except jsonschema.exceptions.ValidationError as e:
-                log(f"Invalid key verification done payload: {e}")
-                return
-
-            done_event = KeyVerificationDone(
-                base=event,
-                transaction_id=event.source["content"]["transaction_id"],
+            done_event = _KeyVerificationDoneJson.model_validate(event.source)
+            await on_key_verification_done(
+                KeyVerificationDone(base=event, json=done_event)
             )
-            await on_key_verification_done(done_event)
 
         else:
             log(f"Unhandled event type {event.source['type']}")
