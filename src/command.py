@@ -240,8 +240,9 @@ class Command(NamedTuple):
         )
 
     async def _reply(self, message: str) -> None:
+        prefixed_message = self.bot._ignore_prefix + message
         await self.bot._lib_bot.api.send_text_message(
             room_id=self.room_id,
             reply_to=self.message_id,
-            message=message,
+            message=prefixed_message,
         )
