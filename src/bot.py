@@ -58,7 +58,6 @@ class Ollama:
         self.past_messages = dict()
         self.done_pulling_model = False
         self.prompt_id_counter = IdCounter()
-        self.ingore_prefix = "\N{ZERO WIDTH SPACE}"
 
         bot_name = re.escape(options.bot_name)
         self.reply_regex = re.compile(bot_name, re.IGNORECASE)
@@ -72,8 +71,7 @@ class Bot:
     _command_id_counter: IdCounter
     _ran_startup: bool = False
     _ollama: Optional[Ollama]
-    # _past_messages: dict[str, list[RoomMessageText]] = dict()
-    # _ollama: Optional[OllamaAsyncClient]
+    _ignore_prefix: str = "\N{ZERO WIDTH SPACE}"
 
     @property
     def _client(self):
@@ -148,6 +146,17 @@ class Bot:
         await self._on_startup("_ensure_on_startup_runs")
 
     # Receive text message
+
+    def _message_is_from_this_bot(
+        self,
+        room: MatrixRoom,
+        message: RoomMessageText,
+    ) -> bool:
+        if room.own_user_id != message.sender:
+            return False
+        if not message.body.startswith(self._ignore_prefix):
+            return False
+        return True
 
     @make_concurrent
     async def _handle_text_message(
@@ -228,20 +237,20 @@ class Bot:
         while len(past_messages_ref) > ollama.options.last_n_messages:
             past_messages_ref.pop(0)
 
-        # Make a copy for this prompt only.
-        past_messages = past_messages_ref.copy()
-
         if not ollama.done_pulling_model:
             # We can't prompt until the model has been pulled.
             return False
 
-        if message.body.startswith(ollama.ingore_prefix):
+        if self._message_is_from_this_bot(room, message):
             # Prevent self-response loops.
             return False
 
         if ollama.reply_regex.search(message.body) is None:
             # The bot was not prompted.
             return False
+
+        # Make a copy for this prompt only.
+        past_messages = past_messages_ref.copy()
 
         # The bot was prompted.
         prompt_id = ollama.prompt_id_counter.acquire_new_id()
@@ -255,9 +264,7 @@ class Bot:
             time_str = time.strftime("At %I:%M %p on %A, %B %d, %Y")
 
             user_title: str
-            if msg.sender == room.own_user_id and msg.body.startswith(
-                ollama.ingore_prefix
-            ):
+            if self._message_is_from_this_bot(room, msg):
                 user_title = "you"
             else:
                 user_title = f"user {room.user_name(msg.sender)}"
