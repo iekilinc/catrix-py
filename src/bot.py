@@ -49,7 +49,6 @@ class Ollama:
     client: OllamaAsyncClient
     past_messages: dict[str, list[RoomMessageText]]
     prompt_id_counter: IdCounter
-    ingore_prefix: str
     reply_regex: re.Pattern[str]
 
     def __init__(self, options: OllamaOptions, client: OllamaAsyncClient) -> None:
@@ -302,7 +301,7 @@ Now, keep all of these messages in mind and respond directly to the very last me
             log("ERROR: Got no message content from Ollama chat response")
             return True
 
-        response_message = ollama.ingore_prefix + response_message
+        response_message = self._ignore_prefix + response_message
 
         await self._lib_bot.api.send_text_message(
             room_id=room.room_id,
