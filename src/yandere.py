@@ -1,30 +1,24 @@
 from typing import Any, Optional, Callable
 from booru import Rating
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
 from mimetypes import guess_type
 from urllib.parse import unquote
+from pydantic import BaseModel, ValidationError
+
 from booru import Booru, ImageProps, ReceivedZeroPostsError, InvalidPostJsonError
 
-post_json_schema = {
-    "type": "object",
-    "properties": {
-        "id": {"type": "number"},
-        "author": {"type": "string"},
-        "sample_url": {"type": "string"},
-        "sample_width": {"type": "number"},
-        "sample_height": {"type": "number"},
-        "sample_file_size": {"type": "number"},
-    },
-    "required": [
-        "id",
-        "author",
-        "sample_url",
-        "sample_width",
-        "sample_height",
-        "sample_file_size",
-    ],
-}
+
+class _Post(BaseModel):
+    id: int
+    author: str
+    sample_url: str
+    sample_width: int
+    sample_height: int
+    sample_file_size: int
+
+
+class _Posts(BaseModel):
+    posts: list[_Post]
+
 
 TAG_SEPERATOR = "+"
 
@@ -68,7 +62,8 @@ class YandeRe(Booru):
         if isinstance(post, ReceivedZeroPostsError):
             return post
 
-        url = str(post["sample_url"])
+        url = post.sample_url
+
         *_, tail = url.split("/")
         filename = unquote(tail)
 
@@ -78,12 +73,12 @@ class YandeRe(Booru):
                 f"Could not guess MIME type of image from filename '{filename}'"
             )
 
-        width = int(post["sample_width"])
-        height = int(post["sample_height"])
-        file_size = int(post["sample_file_size"])
+        width = post.sample_width
+        height = post.sample_height
+        file_size = post.sample_file_size
 
-        author = str(post["author"])
-        post_id = str(post["id"])
+        author = post.author
+        post_id = post.id
         post_url = f"https://yande.re/post/show/{post_id}"
 
         return ImageProps(
@@ -99,22 +94,20 @@ class YandeRe(Booru):
 
     def _extract_post_json(
         self, posts: Any
-    ) -> InvalidPostJsonError | ReceivedZeroPostsError | Any:
+    ) -> InvalidPostJsonError | ReceivedZeroPostsError | _Post:
         try:
-            posts_json_schema = {
-                "type": "array",
-                "items": post_json_schema,
-            }
-            validate(posts, posts_json_schema)
+            posts_obj = _Posts.model_validate({"posts": posts}, strict=True)
         except ValidationError as err:
             return InvalidPostJsonError(err)
 
-        if len(posts) == 0:
+        parsed_posts = posts_obj.posts
+
+        if len(parsed_posts) == 0:
             return ReceivedZeroPostsError()
-        elif len(posts) == 1:
-            return posts[0]
+        elif len(parsed_posts) == 1:
+            return parsed_posts[0]
         else:
             self.log(
-                f"WARNING: Received more 1 post ({len(posts)}). Using the first post in the list."
+                f"WARNING: Received more than 1 post ({len(parsed_posts)}). Using the first post in the list."
             )
-            return posts[0]
+            return parsed_posts[0]
