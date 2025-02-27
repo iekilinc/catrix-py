@@ -2,6 +2,7 @@ from typing import NamedTuple
 from getpass import getpass
 from json import dumps, loads
 from typing import Optional
+from os.path import join
 import aiofiles
 import simplematrixbotlib as botlib
 from datetime import datetime
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 
 
 class Paths(NamedTuple):
-    auth_txt: str
+    auth_dir: str
     store_dir: str
 
 
@@ -34,7 +35,7 @@ class OptionsJson(BaseModel, frozen=True):
     ollama: Optional[Ollama] = None
 
 
-class Options(BaseModel, frozen=True):
+class Options(NamedTuple):
     homeserver: str
     username: str
     password: str
@@ -88,12 +89,15 @@ class Options(BaseModel, frozen=True):
         )
 
     def botlib_creds(self) -> botlib.Creds:
+        auth_filename = f"{self.username}_{self.device_name}.txt"
+        session_stored_file = join(self.paths.auth_dir, auth_filename)
+
         creds = botlib.Creds(
             homeserver=self.homeserver,
             username=self.username,
             password=self.password,
             device_name=self.device_name,
-            session_stored_file=self.paths.auth_txt,
+            session_stored_file=session_stored_file,
         )
         return creds
 

@@ -11,7 +11,7 @@ CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
 
 BASE_DIR = os.path.abspath("session")
 STORE_DIR = os.path.join(BASE_DIR, "store")
-AUTH_PATH = os.path.join(BASE_DIR, "auth.txt")
+AUTH_DIR = os.path.join(BASE_DIR, "auth")
 
 
 def print_timestamped(msg: str):
@@ -33,10 +33,11 @@ def ensure_directory(path: str) -> None:
 async def amain() -> None:
     ensure_directory(BASE_DIR)
     ensure_directory(STORE_DIR)
+    ensure_directory(AUTH_DIR)
 
     # Options
     paths = Paths(
-        auth_txt=AUTH_PATH,
+        auth_dir=AUTH_DIR,
         store_dir=STORE_DIR,
     )
     options = await resolve_options(
