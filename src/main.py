@@ -7,12 +7,6 @@ from datetime import datetime
 from options import resolve_options, Paths
 from bot import Bot
 
-CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
-
-BASE_DIR = os.path.abspath("session")
-STORE_DIR = os.path.join(BASE_DIR, "store")
-AUTH_DIR = os.path.join(BASE_DIR, "auth")
-
 
 def print_timestamped(msg: str):
     print(f"{datetime.now().isoformat()}: {msg}")
@@ -31,6 +25,12 @@ def ensure_directory(path: str) -> None:
 
 
 async def amain() -> None:
+    CREDENTIALS_JSON_PATH = os.path.abspath("credentials.json")
+
+    BASE_DIR = os.path.abspath("session")
+    STORE_DIR = os.path.join(BASE_DIR, "store")
+    AUTH_DIR = os.path.join(BASE_DIR, "auth")
+
     ensure_directory(BASE_DIR)
     ensure_directory(STORE_DIR)
     ensure_directory(AUTH_DIR)
