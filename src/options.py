@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Self, Any, Callable
 from booru import Rating
 from pydantic import BaseModel
+from ollama import Options as OllamaParameters
 
 
 class Paths(NamedTuple):
@@ -21,8 +22,7 @@ class Ollama(BaseModel, frozen=True):
     model: str
     last_n_messages: int
     prompt_prefix: str
-    temperature: Optional[float] = None
-    max_token_suggestion: int = 60
+    parameters: OllamaParameters
 
 
 class OptionsJson(BaseModel, frozen=True):

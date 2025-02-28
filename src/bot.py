@@ -270,7 +270,11 @@ class Bot:
 
             past_messages_str += f"\n{time_str} - {user_title} said: {msg.body!r}"
 
-        max_token_suggestion = ollama.options.max_token_suggestion
+        num_predict = ollama.options.parameters.num_predict
+        if num_predict is None:
+            num_predict = 120
+
+        max_token_suggestion = num_predict / 2
 
         prompt = f"""
 {ollama.options.prompt_prefix}
@@ -289,10 +293,7 @@ Now, keep all of these messages in mind and respond directly to the very last me
                 }
             ],
             stream=False,
-            options=ChatOptions(
-                num_predict=max_token_suggestion * 2,
-                temperature=ollama.options.temperature,
-            ),
+            options=ollama.options.parameters,
         )
         log(f"Got response: {response.model_dump_json(indent=2)}")
 
