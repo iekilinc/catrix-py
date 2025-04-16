@@ -1,6 +1,6 @@
 services:
-  catrix-smbl:
-    container_name: catrix-smbl
+  catrix-py:
+    container_name: catrix-py
     build:
       context: .
       dockerfile: Dockerfile
