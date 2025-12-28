@@ -69,7 +69,7 @@ class Bot:
     _booru: Booru
     _command_id_counter: IdCounter
     _ran_startup: bool = False
-    _ollama: Optional[Ollama]
+    _ollama: Optional[Ollama] = None
     _ignore_prefix: str = "\N{ZERO WIDTH SPACE}"
 
     @property
